@@ -1,0 +1,11 @@
+[Unit]
+Description=DJI PSDK USB VCOM gadget (/dev/ttyGS0)
+After=sys-kernel-config.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/polocalc/Payload-SDK/tools/rpi_usb_gadget/dji_vcom_gadget.sh
+
+[Install]
+WantedBy=multi-user.target

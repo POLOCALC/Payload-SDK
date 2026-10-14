@@ -45,8 +45,8 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 //User can config dev based on there environmental conditions
-#define LINUX_UART_DEV1    "/dev/ttyAMA1"
-#define LINUX_UART_DEV2    "/dev/ttyAMA2"
+#define LINUX_UART_DEV1    "/dev/ttyGS0"
+#define LINUX_UART_DEV2    "/dev/null"
 
 /**
  * Use for Eport 2.0, specify the VID and PID of the USB serial port closest to the aircraft.
@@ -54,8 +54,8 @@ extern "C" {
  * CP2102   0x10C4:0xEA60
  * VCOM     0x2CA3:0xF002
  */
-#define USB_UART_CONNECTED_TO_UAV_VID (0x0403)
-#define USB_UART_CONNECTED_TO_UAV_PID (0x6001)
+#define USB_UART_CONNECTED_TO_UAV_VID (0x2CA3)
+#define USB_UART_CONNECTED_TO_UAV_PID (0xF002)
 
 /* Exported types ------------------------------------------------------------*/
 
