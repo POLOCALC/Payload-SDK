@@ -48,14 +48,15 @@ Rates: `0` (group off), 1, 5, 10, 50, 100, 200 or 400 Hz. The PSDK allows at mos
 | Group (default rate) | Bytes | Topics |
 |---|---|---|
 | imu (off) | 64 | IMU navigation data with timestamp (position, velocity, acceleration, quaternion); the aircraft only gives it at 50 Hz |
-| fast (10 Hz) | 226 | quaternion, velocity, acceleration (ground, body, raw), angular rate (fused, raw), compass, altitude (fused, barometer), fused height, GPS position and velocity, RTK position, velocity, yaw and their status, fused position, obstacle distances, RC sticks |
-| status (5 Hz) | 159 | visual-odometry position, RC sticks and link flags, GPS details and signal level, flight status, display mode, motor start error, control device, RTK connection, flight anomalies, ESC data |
-| slow (1 Hz) | 95 | battery 1 and 2, GPS date and time, home-point altitude, status and position |
+| fast (10 Hz) | 168 | quaternion, velocity, acceleration (ground, body, raw), angular rate (fused, raw), compass, altitude (fused, barometer), fused height, fused position, obstacle distances, RC sticks |
+| status (5 Hz) | 221 | GPS position and velocity, RTK position, velocity, yaw and their status (the Matrice 400 updates GPS and RTK at 5 Hz), visual-odometry position, RC sticks and link flags, GPS details and signal level, flight status, display mode, motor start error, control device, RTK connection, flight anomalies, ESC data |
+| slow (1 Hz) | 62 | battery, GPS date and time, home-point altitude, status and position |
 
 **Link bandwidth.** The link to the aircraft runs at 115200 baud, about 11.5 kB/s. At the defaults the telemetry takes about 3.6 kB/s; `--imu 50` adds about 4.7 kB/s. Don't go much higher: with all the groups at higher rates (about 10 kB/s), the aircraft stopped answering after about a minute (`Command async send retry ... 0x0503->0x0801` warnings), then dropped the link (`connect status async timeout`).
 
 **Topics left out:**
-- Rejected by the Matrice 400 (error `0x00000100`): `BATTERY_INFO`, `GIMBAL_STATUS`, `THREE_GIMBAL_DATA`, `GPS_CONTROL_LEVEL`, `STATUS_LANDINGGEAR`, `GIMBAL_CONTROL_MODE`, `HEIGHT_RELATIVE`, `HARD_SYNC`. The two per-battery topics replace `BATTERY_INFO`.
+- `BATTERY_SINGLE_INFO_INDEX2`: the Matrice 400 has a single battery, and this topic only repeats `INDEX1`.
+- Rejected by the Matrice 400 (error `0x00000100`): `BATTERY_INFO`, `GIMBAL_STATUS`, `THREE_GIMBAL_DATA`, `GPS_CONTROL_LEVEL`, `STATUS_LANDINGGEAR`, `GIMBAL_CONTROL_MODE`, `HEIGHT_RELATIVE`, `HARD_SYNC`. `BATTERY_SINGLE_INFO_INDEX1` replaces `BATTERY_INFO`.
 - For DJI gimbals on the aircraft's own gimbal ports, of which POLOCALC has none: `GIMBAL_ANGLES` (50 Hz only), `GIMBAL_ANGLES_ON_POS_NO1..7`. In `dji_fc_subscription.h`, `NO1` also has the same topic id as `IMU_ATTI_NAVI_DATA_WITH_TIMESTAMP`.
 
 The topics give data at up to their own maximum rate, whatever rate is requested. For example, the Matrice 400 sends GPS and RTK at 5 Hz even in the 10 Hz group. The STATS records show how many records each topic actually delivered.

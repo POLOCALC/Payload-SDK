@@ -11,6 +11,7 @@ Record format: see application/telemetry_stream.h.
 """
 import argparse
 import datetime
+import math
 import struct
 import sys
 from collections import Counter
@@ -29,9 +30,10 @@ DECODERS = {
     # imu group
     "quaternion":            ("<4f",     ("q0", "q1", "q2", "q3")),
     "velocity":              ("<3fB",    ("vx", "vy", "vz", "health")),
-    "acceleration_ground":   ("<3f",     ("x", "y", "z")),
-    "acceleration_body":     ("<3f",     ("x", "y", "z")),
-    "acceleration_raw":      ("<3f",     ("x", "y", "z")),
+    # units seen on the Matrice 400 (the header says m/s^2 for all three):
+    "acceleration_ground":   ("<3f",     ("x", "y", "z")),         # gravity removed, ~0 at rest
+    "acceleration_body":     ("<3f",     ("x_g", "y_g", "z_g")),   # g, gravity included (z ~ -1 at rest)
+    "acceleration_raw":      ("<3f",     ("x", "y", "z")),         # gravity removed, ~0 at rest
     "angular_rate_fused":    ("<3f",     ("x", "y", "z")),
     "angular_rate_raw":      ("<3f",     ("x", "y", "z")),
     "compass":               ("<3h",     ("x", "y", "z")),
@@ -43,10 +45,10 @@ DECODERS = {
     "gps_velocity":          ("<3f",     ("x_cms", "y_cms", "z_cms")),
     "rtk_position":          ("<ddf",    ("lon_deg", "lat_deg", "hfsl_m")),
     "rtk_velocity":          ("<3f",     ("x_cms", "y_cms", "z_cms")),
-    "rtk_yaw":               ("<h",      ("yaw",)),
+    "rtk_yaw":               ("<f",      ("yaw_deg",)),            # float deg on the M400 (header: int16)
     "rtk_position_info":     ("<B",      ("info",)),
     "rtk_yaw_info":          ("<B",      ("info",)),
-    "position_fused":        ("<ddfH",   ("lon_rad", "lat_rad", "alt_m", "sats")),
+    "position_fused":        ("<ddfHBB", ("lon_rad", "lat_rad", "alt_m", "sats", "flag1", "flag2")),  # 24 B on the M400
     "position_vo":           ("<3fB",    ("x_m", "y_m", "z_m", "health")),
     "avoid_data":            ("<6fB",    ("down", "front", "right", "back", "left", "up", "health")),
     "rc":                    ("<6h",     ("roll", "pitch", "yaw", "throttle", "mode", "gear")),
@@ -98,6 +100,12 @@ def decode_battery(payload):
             f"self_check={(bits >> 17) & 0x7} closed_reason={(bits >> 27) & 0x1F}")
 
 
+def decode_position_fused(payload):
+    lon, lat, alt, sats, flag1, flag2 = struct.unpack("<ddfHBB", payload)
+    return (f"lat_deg={math.degrees(lat):.8f}  lon_deg={math.degrees(lon):.8f}  alt_m={alt:.3f}  sats={sats}  "
+            f"flags={flag1},{flag2}")
+
+
 def decode_esc(payload):
     parts = []
     for i in range(8):
@@ -105,7 +113,7 @@ def decode_esc(payload):
         if not (ma or rpm or mv or temp):
             continue                            # slot not used by this aircraft
         names = [n for b, n in enumerate(ESC_FLAGS) if flags >> b & 1]
-        parts.append(f"esc{i + 1}:{rpm}rpm/{ma / 1000:.2f}A/{mv / 1000:.2f}V/{temp}C" +
+        parts.append(f"esc{i + 1}:{rpm}rpm/{ma / 1000:.2f}A/{mv / 1000:.2f}V/{temp / 10:.1f}C" +   # 0.1 C on the M400
                      (f"[{','.join(names)}]" if names else ""))
     return " ".join(parts) or "all zero"
 
@@ -120,6 +128,7 @@ SPECIAL = {
     "battery1": (BATTERY.size, decode_battery),
     "battery2": (BATTERY.size, decode_battery),
     "esc_data": (8 * ESC.size, decode_esc),
+    "position_fused": (24, decode_position_fused),
     "flight_anomaly": (4, decode_anomaly),
 }
 

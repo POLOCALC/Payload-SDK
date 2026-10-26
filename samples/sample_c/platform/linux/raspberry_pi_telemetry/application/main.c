@@ -37,7 +37,7 @@
 
 #define PROGRAM_NAME          "psdk_telemetry"
 #define DEFAULT_SERIAL_NUMBER "PSDK12345678XX"   /* same as the DJI demo, so an activation done with it stays valid */
-#define LATEST_MAX_SIZE       128             /* largest topic: ESC data, 80 bytes */
+#define LATEST_MAX_SIZE       128                /* largest topic: ESC data, 80 bytes */
 #define SUBSCRIPTION_MAX_BYTES_PER_FREQ 242      /* PSDK limit, see DjiFcSubscription_SubscribeTopic() */
 #define LINK_TIMEOUT_S        10                 /* no fast-group data for this long: the link is lost, exit */
 
@@ -47,9 +47,9 @@
    With everything at higher rates (~10 kB/s) the aircraft stops answering after about a minute and drops the link. */
 typedef enum {
     GROUP_IMU = 0,          /* --imu (off by default): IMU navigation data, which the aircraft only gives at 50 Hz */
-    GROUP_FAST,             /* --fast:   attitude, IMU, altitudes, GPS/RTK and fused position, obstacles, RC sticks */
-    GROUP_STATUS,           /* --status: visual odometry, RC link, GPS quality, flight state and anomalies, ESCs */
-    GROUP_SLOW,             /* --slow:   batteries, GPS date/time, home point */
+    GROUP_FAST,             /* --fast:   attitude, IMU, altitudes, fused position, obstacles, RC sticks */
+    GROUP_STATUS,           /* --status: GPS, RTK, visual odometry, RC link, flight state and anomalies, ESCs */
+    GROUP_SLOW,             /* --slow:   battery, GPS date/time, home point */
     GROUP_COUNT
 } E_Group;
 
@@ -82,62 +82,62 @@ DEFINE_CALLBACK(15) DEFINE_CALLBACK(16) DEFINE_CALLBACK(17) DEFINE_CALLBACK(18) 
 DEFINE_CALLBACK(20) DEFINE_CALLBACK(21) DEFINE_CALLBACK(22) DEFINE_CALLBACK(23) DEFINE_CALLBACK(24)
 DEFINE_CALLBACK(25) DEFINE_CALLBACK(26) DEFINE_CALLBACK(27) DEFINE_CALLBACK(28) DEFINE_CALLBACK(29)
 DEFINE_CALLBACK(30) DEFINE_CALLBACK(31) DEFINE_CALLBACK(32) DEFINE_CALLBACK(33) DEFINE_CALLBACK(34)
-DEFINE_CALLBACK(35) DEFINE_CALLBACK(36) DEFINE_CALLBACK(37) DEFINE_CALLBACK(38) DEFINE_CALLBACK(39)
+DEFINE_CALLBACK(35) DEFINE_CALLBACK(36) DEFINE_CALLBACK(37) DEFINE_CALLBACK(38)
 
 #define TOPIC(id, name, type, group, n) {DJI_FC_SUBSCRIPTION_TOPIC_##id, name, sizeof(type), group, Callback##n}
 
 /* Every flight-controller topic of the PSDK that the Matrice 400 provides. Left out:
-   - rejected by the Matrice 400 (error 0x00000100): BATTERY_INFO (whole battery; BATTERY_SINGLE_INFO_INDEX1/2 give
-     each battery), GIMBAL_STATUS, THREE_GIMBAL_DATA, GPS_CONTROL_LEVEL, STATUS_LANDINGGEAR, GIMBAL_CONTROL_MODE,
-     HEIGHT_RELATIVE, HARD_SYNC,
+   - rejected by the Matrice 400 (error 0x00000100): BATTERY_INFO (whole battery), GIMBAL_STATUS, THREE_GIMBAL_DATA,
+     GPS_CONTROL_LEVEL, STATUS_LANDINGGEAR, GIMBAL_CONTROL_MODE, HEIGHT_RELATIVE, HARD_SYNC,
+   - BATTERY_SINGLE_INFO_INDEX2: the Matrice 400 has a single battery and INDEX2 only repeats INDEX1,
    - DJI gimbals on the aircraft's gimbal ports, none on POLOCALC: GIMBAL_ANGLES (50 Hz only), GIMBAL_ANGLES_ON_POS_NO1..7
      (NO1 also has the same topic id as IMU_ATTI_NAVI_DATA_WITH_TIMESTAMP in dji_fc_subscription.h).
+   GPS and RTK give new values at 5 Hz on the Matrice 400, so they are in the 5 Hz group.
    A topic the aircraft doesn't support is reported as a warning and skipped. */
 static T_Topic s_topics[] = {
     /* imu: 64 bytes, 50 Hz only */
-    TOPIC(IMU_ATTI_NAVI_DATA_WITH_TIMESTAMP, "imu_atti_navi", T_DjiFcSubscriptionImuAttiNaviDataWithTimestamp, GROUP_IMU, 0),
-    /* fast: 226 bytes */
-    TOPIC(QUATERNION,            "quaternion",            T_DjiFcSubscriptionQuaternion,            GROUP_FAST,   1),
-    TOPIC(VELOCITY,              "velocity",              T_DjiFcSubscriptionVelocity,              GROUP_FAST,   2),
-    TOPIC(ACCELERATION_GROUND,   "acceleration_ground",   T_DjiFcSubscriptionAccelerationGround,    GROUP_FAST,   3),
-    TOPIC(ACCELERATION_BODY,     "acceleration_body",     T_DjiFcSubscriptionAccelerationBody,      GROUP_FAST,   4),
-    TOPIC(ACCELERATION_RAW,      "acceleration_raw",      T_DjiFcSubscriptionAccelerationRaw,       GROUP_FAST,   5),
-    TOPIC(ANGULAR_RATE_FUSIONED, "angular_rate_fused",    T_DjiFcSubscriptionAngularRateFusioned,   GROUP_FAST,   6),
-    TOPIC(ANGULAR_RATE_RAW,      "angular_rate_raw",      T_DjiFcSubscriptionAngularRateRaw,        GROUP_FAST,   7),
-    TOPIC(COMPASS,               "compass",               T_DjiFcSubscriptionCompass,               GROUP_FAST,   8),
-    TOPIC(ALTITUDE_FUSED,        "altitude_fused",        T_DjiFcSubscriptionAltitudeFused,         GROUP_FAST,   9),
-    TOPIC(ALTITUDE_BAROMETER,    "altitude_barometer",    T_DjiFcSubscriptionAltitudeBarometer,     GROUP_FAST,   10),
-    TOPIC(HEIGHT_FUSION,         "height_fusion",         T_DjiFcSubscriptionHeightFusion,          GROUP_FAST,   11),
-    TOPIC(GPS_POSITION,          "gps_position",          T_DjiFcSubscriptionGpsPosition,           GROUP_FAST,   12),
-    TOPIC(GPS_VELOCITY,          "gps_velocity",          T_DjiFcSubscriptionGpsVelocity,           GROUP_FAST,   13),
-    TOPIC(RTK_POSITION,          "rtk_position",          T_DjiFcSubscriptionRtkPosition,           GROUP_FAST,   14),
-    TOPIC(RTK_VELOCITY,          "rtk_velocity",          T_DjiFcSubscriptionRtkVelocity,           GROUP_FAST,   15),
-    TOPIC(RTK_YAW,               "rtk_yaw",               T_DjiFcSubscriptionRtkYaw,                GROUP_FAST,   16),
-    TOPIC(RTK_POSITION_INFO,     "rtk_position_info",     T_DjiFcSubscriptionRtkPositionInfo,       GROUP_FAST,   17),
-    TOPIC(RTK_YAW_INFO,          "rtk_yaw_info",          T_DjiFcSubscriptionRtkYawInfo,            GROUP_FAST,   18),
-    TOPIC(POSITION_FUSED,        "position_fused",        T_DjiFcSubscriptionPositionFused,         GROUP_FAST,   19),
-    TOPIC(AVOID_DATA,            "avoid_data",            T_DjiFcSubscriptionAvoidData,             GROUP_FAST,   20),
-    TOPIC(RC,                    "rc",                    T_DjiFcSubscriptionRC,                    GROUP_FAST,   21),
-    /* status: 159 bytes */
-    TOPIC(POSITION_VO,           "position_vo",           T_DjiFcSubscriptionPositionVO,            GROUP_STATUS, 22),
-    TOPIC(RC_WITH_FLAG_DATA,     "rc_with_flag",          T_DjiFcSubscriptionRCWithFlagData,        GROUP_STATUS, 23),
-    TOPIC(GPS_DETAILS,           "gps_details",           T_DjiFcSubscriptionGpsDetails,            GROUP_STATUS, 24),
-    TOPIC(GPS_SIGNAL_LEVEL,      "gps_signal_level",      T_DjiFcSubscriptionGpsSignalLevel,        GROUP_STATUS, 25),
-    TOPIC(STATUS_FLIGHT,         "flight_status",         T_DjiFcSubscriptionFlightStatus,          GROUP_STATUS, 26),
-    TOPIC(STATUS_DISPLAYMODE,    "display_mode",          T_DjiFcSubscriptionDisplaymode,           GROUP_STATUS, 27),
-    TOPIC(STATUS_MOTOR_START_ERROR, "motor_start_error",  T_DjiFcSubscriptionMotorStartError,       GROUP_STATUS, 28),
-    TOPIC(CONTROL_DEVICE,        "control_device",        T_DjiFcSubscriptionControlDevice,         GROUP_STATUS, 29),
-    TOPIC(RTK_CONNECT_STATUS,    "rtk_connect_status",    T_DjiFcSubscriptionRTKConnectStatus,      GROUP_STATUS, 30),
-    TOPIC(FLIGHT_ANOMALY,        "flight_anomaly",        T_DjiFcSubscriptionFlightAnomaly,         GROUP_STATUS, 31),
-    TOPIC(ESC_DATA,              "esc_data",              T_DjiFcSubscriptionEscData,               GROUP_STATUS, 32),
-    /* slow: 95 bytes */
-    TOPIC(BATTERY_SINGLE_INFO_INDEX1, "battery1",         T_DjiFcSubscriptionSingleBatteryInfo,     GROUP_SLOW,   33),
-    TOPIC(BATTERY_SINGLE_INFO_INDEX2, "battery2",         T_DjiFcSubscriptionSingleBatteryInfo,     GROUP_SLOW,   34),
-    TOPIC(GPS_DATE,              "gps_date",              T_DjiFcSubscriptionGpsDate,               GROUP_SLOW,   35),
-    TOPIC(GPS_TIME,              "gps_time",              T_DjiFcSubscriptionGpsTime,               GROUP_SLOW,   36),
-    TOPIC(ALTITUDE_OF_HOMEPOINT, "altitude_of_homepoint", T_DjiFcSubscriptionAltitudeOfHomePoint,   GROUP_SLOW,   37),
-    TOPIC(HOME_POINT_SET_STATUS, "home_point_set_status", T_DjiFcSubscriptionHomePointSetStatus,    GROUP_SLOW,   38),
-    TOPIC(HOME_POINT_INFO,       "home_point_info",       T_DjiFcSubscriptionHomePointInfo,         GROUP_SLOW,   39),
+    TOPIC(IMU_ATTI_NAVI_DATA_WITH_TIMESTAMP, "imu_atti_navi",         T_DjiFcSubscriptionImuAttiNaviDataWithTimestamp, GROUP_IMU,    0),
+    /* fast: 168 bytes */
+    TOPIC(QUATERNION,            "quaternion",            T_DjiFcSubscriptionQuaternion,             GROUP_FAST,   1),
+    TOPIC(VELOCITY,              "velocity",              T_DjiFcSubscriptionVelocity,               GROUP_FAST,   2),
+    TOPIC(ACCELERATION_GROUND,   "acceleration_ground",   T_DjiFcSubscriptionAccelerationGround,     GROUP_FAST,   3),
+    TOPIC(ACCELERATION_BODY,     "acceleration_body",     T_DjiFcSubscriptionAccelerationBody,       GROUP_FAST,   4),
+    TOPIC(ACCELERATION_RAW,      "acceleration_raw",      T_DjiFcSubscriptionAccelerationRaw,        GROUP_FAST,   5),
+    TOPIC(ANGULAR_RATE_FUSIONED, "angular_rate_fused",    T_DjiFcSubscriptionAngularRateFusioned,    GROUP_FAST,   6),
+    TOPIC(ANGULAR_RATE_RAW,      "angular_rate_raw",      T_DjiFcSubscriptionAngularRateRaw,         GROUP_FAST,   7),
+    TOPIC(COMPASS,               "compass",               T_DjiFcSubscriptionCompass,                GROUP_FAST,   8),
+    TOPIC(ALTITUDE_FUSED,        "altitude_fused",        T_DjiFcSubscriptionAltitudeFused,          GROUP_FAST,   9),
+    TOPIC(ALTITUDE_BAROMETER,    "altitude_barometer",    T_DjiFcSubscriptionAltitudeBarometer,      GROUP_FAST,   10),
+    TOPIC(HEIGHT_FUSION,         "height_fusion",         T_DjiFcSubscriptionHeightFusion,           GROUP_FAST,   11),
+    TOPIC(POSITION_FUSED,        "position_fused",        T_DjiFcSubscriptionPositionFused,          GROUP_FAST,   12),
+    TOPIC(AVOID_DATA,            "avoid_data",            T_DjiFcSubscriptionAvoidData,              GROUP_FAST,   13),
+    TOPIC(RC,                    "rc",                    T_DjiFcSubscriptionRC,                     GROUP_FAST,   14),
+    /* status: 221 bytes (GPS and RTK: the Matrice 400 updates them at 5 Hz) */
+    TOPIC(GPS_POSITION,          "gps_position",          T_DjiFcSubscriptionGpsPosition,            GROUP_STATUS, 15),
+    TOPIC(GPS_VELOCITY,          "gps_velocity",          T_DjiFcSubscriptionGpsVelocity,            GROUP_STATUS, 16),
+    TOPIC(RTK_POSITION,          "rtk_position",          T_DjiFcSubscriptionRtkPosition,            GROUP_STATUS, 17),
+    TOPIC(RTK_VELOCITY,          "rtk_velocity",          T_DjiFcSubscriptionRtkVelocity,            GROUP_STATUS, 18),
+    TOPIC(RTK_YAW,               "rtk_yaw",               T_DjiFcSubscriptionRtkYaw,                 GROUP_STATUS, 19),
+    TOPIC(RTK_POSITION_INFO,     "rtk_position_info",     T_DjiFcSubscriptionRtkPositionInfo,        GROUP_STATUS, 20),
+    TOPIC(RTK_YAW_INFO,          "rtk_yaw_info",          T_DjiFcSubscriptionRtkYawInfo,             GROUP_STATUS, 21),
+    TOPIC(POSITION_VO,           "position_vo",           T_DjiFcSubscriptionPositionVO,             GROUP_STATUS, 22),
+    TOPIC(RC_WITH_FLAG_DATA,     "rc_with_flag",          T_DjiFcSubscriptionRCWithFlagData,         GROUP_STATUS, 23),
+    TOPIC(GPS_DETAILS,           "gps_details",           T_DjiFcSubscriptionGpsDetails,             GROUP_STATUS, 24),
+    TOPIC(GPS_SIGNAL_LEVEL,      "gps_signal_level",      T_DjiFcSubscriptionGpsSignalLevel,         GROUP_STATUS, 25),
+    TOPIC(STATUS_FLIGHT,         "flight_status",         T_DjiFcSubscriptionFlightStatus,           GROUP_STATUS, 26),
+    TOPIC(STATUS_DISPLAYMODE,    "display_mode",          T_DjiFcSubscriptionDisplaymode,            GROUP_STATUS, 27),
+    TOPIC(STATUS_MOTOR_START_ERROR, "motor_start_error",     T_DjiFcSubscriptionMotorStartError,        GROUP_STATUS, 28),
+    TOPIC(CONTROL_DEVICE,        "control_device",        T_DjiFcSubscriptionControlDevice,          GROUP_STATUS, 29),
+    TOPIC(RTK_CONNECT_STATUS,    "rtk_connect_status",    T_DjiFcSubscriptionRTKConnectStatus,       GROUP_STATUS, 30),
+    TOPIC(FLIGHT_ANOMALY,        "flight_anomaly",        T_DjiFcSubscriptionFlightAnomaly,          GROUP_STATUS, 31),
+    TOPIC(ESC_DATA,              "esc_data",              T_DjiFcSubscriptionEscData,                GROUP_STATUS, 32),
+    /* slow: 62 bytes */
+    TOPIC(BATTERY_SINGLE_INFO_INDEX1, "battery1",              T_DjiFcSubscriptionSingleBatteryInfo,      GROUP_SLOW,   33),
+    TOPIC(GPS_DATE,              "gps_date",              T_DjiFcSubscriptionGpsDate,                GROUP_SLOW,   34),
+    TOPIC(GPS_TIME,              "gps_time",              T_DjiFcSubscriptionGpsTime,                GROUP_SLOW,   35),
+    TOPIC(ALTITUDE_OF_HOMEPOINT, "altitude_of_homepoint", T_DjiFcSubscriptionAltitudeOfHomePoint,    GROUP_SLOW,   36),
+    TOPIC(HOME_POINT_SET_STATUS, "home_point_set_status", T_DjiFcSubscriptionHomePointSetStatus,     GROUP_SLOW,   37),
+    TOPIC(HOME_POINT_INFO,       "home_point_info",       T_DjiFcSubscriptionHomePointInfo,          GROUP_SLOW,   38),
 };
 #define TOPIC_COUNT ((int) (sizeof(s_topics) / sizeof(s_topics[0])))
 
@@ -551,10 +551,10 @@ static void PrintLatest(void)
     T_DjiFcSubscriptionQuaternion q;
     T_DjiFcSubscriptionRtkPosition rtk;
     T_DjiFcSubscriptionGpsPosition gps;
-    T_DjiFcSubscriptionSingleBatteryInfo battery1, battery2;
+    T_DjiFcSubscriptionSingleBatteryInfo battery1;
     T_DjiFcSubscriptionEscData esc;
     T_DjiFcSubscriptionFlightAnomaly anomaly;
-    T_DjiFcSubscriptionRtkYaw rtkYaw;
+    float rtkYaw;                               /* a float in deg on the Matrice 400 (the header says int16) */
     T_DjiFcSubscriptionRtkPositionInfo rtkInfo;
     T_DjiFcSubscriptionRtkYawInfo rtkYawInfo;
     T_DjiFcSubscriptionFlightStatus flightStatus;
@@ -598,7 +598,7 @@ static void PrintLatest(void)
         GetLatest(DJI_FC_SUBSCRIPTION_TOPIC_RTK_POSITION_INFO, &rtkInfo, sizeof(rtkInfo));
         GetLatest(DJI_FC_SUBSCRIPTION_TOPIC_RTK_YAW, &rtkYaw, sizeof(rtkYaw));
         GetLatest(DJI_FC_SUBSCRIPTION_TOPIC_RTK_YAW_INFO, &rtkYawInfo, sizeof(rtkYawInfo));
-        fprintf(stderr, "  rtk       lat %.8f  lon %.8f  hmsl %.3f m  pos_info %u  yaw %d  yaw_info %u\n",
+        fprintf(stderr, "  rtk       lat %.8f  lon %.8f  hmsl %.3f m  pos_info %u  yaw %.2f deg  yaw_info %u\n",
                 rtk.latitude, rtk.longitude, rtk.hfsl, rtkInfo, rtkYaw, rtkYawInfo);
     }
     if (GetLatest(DJI_FC_SUBSCRIPTION_TOPIC_GPS_POSITION, &gps, sizeof(gps))) {
@@ -623,9 +623,6 @@ static void PrintLatest(void)
     if (GetLatest(DJI_FC_SUBSCRIPTION_TOPIC_BATTERY_SINGLE_INFO_INDEX1, &battery1, sizeof(battery1))) {
         PrintBattery("battery1", &battery1);
     }
-    if (GetLatest(DJI_FC_SUBSCRIPTION_TOPIC_BATTERY_SINGLE_INFO_INDEX2, &battery2, sizeof(battery2))) {
-        PrintBattery("battery2", &battery2);
-    }
     if (GetLatest(DJI_FC_SUBSCRIPTION_TOPIC_ESC_DATA, &esc, sizeof(esc))) {
         int shown = 0;
         for (int i = 0; i < 8; i++) {
@@ -633,8 +630,8 @@ static void PrintLatest(void)
             if (e->voltage == 0 && e->speed == 0 && e->current == 0 && e->temperature == 0) {
                 continue;                        /* slot not used by this aircraft */
             }
-            fprintf(stderr, "  esc%d      %6d rpm  %6.2f A  %6.2f V  %4d C%s%s%s%s%s\n", i + 1, e->speed,
-                    e->current / 1000.0, e->voltage / 1000.0, e->temperature,
+            fprintf(stderr, "  esc%d      %6d rpm  %6.2f A  %6.2f V  %5.1f C%s%s%s%s%s\n", i + 1, e->speed,
+                    e->current / 1000.0, e->voltage / 1000.0, e->temperature / 10.0,     /* 0.1 C on the M400 */
                     e->stall ? " STALL" : "", e->empty ? " NO_LOAD" : "", e->unbalanced ? " UNBALANCED" : "",
                     e->escDisconnected ? " DISCONNECTED" : "", e->temperatureHigh ? " TEMP_HIGH" : "");
             shown++;

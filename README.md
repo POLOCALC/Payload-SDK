@@ -97,10 +97,10 @@ With the wrong IDs, the drone is identified (the log shows "Matrice 400 Series")
 **`application/dji_sdk_app_info.h`: the registered application (section 1).**
 ```c
 #define USER_APP_NAME               "polocalc"
-#define USER_APP_ID                 "197493"
+#define USER_APP_ID                 "xxxxxx"
 #define USER_APP_KEY                "<App Key of the registered application>"
 #define USER_APP_LICENSE            "<App License of the registered application>"
-#define USER_DEVELOPER_ACCOUNT      "fe.cacciotti"
+#define USER_DEVELOPER_ACCOUNT      "developer.account"
 #define USER_BAUD_RATE              "115200"
 ```
 The App Key and App License are secret. They are kept in the team's password store, not in this repository, so that they can't leak if the repository (or a copy of it) is public. Paste them into the local copy of the file before building.
